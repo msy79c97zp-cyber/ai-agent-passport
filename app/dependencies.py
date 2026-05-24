@@ -11,6 +11,7 @@ from app.config import Settings, get_settings
 from app.database import get_supabase_client
 from app.services.agent_service import AgentService
 from app.services.billing_service import BillingService
+from app.services.stats_service import StatsService
 
 
 @lru_cache
@@ -35,3 +36,9 @@ def get_billing_service() -> BillingService:
     """Provide a BillingService wired to the Supabase client."""
     client = get_supabase_client()
     return BillingService(client)
+
+
+def get_stats_service() -> StatsService:
+    """Provide a StatsService wired to the Supabase client."""
+    client = get_supabase_client()
+    return StatsService(client)
