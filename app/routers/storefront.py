@@ -4,15 +4,17 @@ from typing import Dict
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from starlette.templating import Jinja2Templates
 
 from app.billing_constants import DEFAULT_STARTING_CREDITS, REFILL_CREDITS_AMOUNT
 from app.dependencies import get_stats_service
+from app.paths import TEMPLATES_DIR
 from app.services.stats_service import StatsService
 
 router = APIRouter(tags=["Storefront"])
 
-templates = Jinja2Templates(directory="app/templates")
+# Absolute path so Render finds templates no matter the working directory.
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
