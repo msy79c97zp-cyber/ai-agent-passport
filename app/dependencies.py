@@ -10,6 +10,7 @@ from functools import lru_cache
 from app.config import Settings, get_settings
 from app.database import get_supabase_client
 from app.services.agent_service import AgentService
+from app.services.billing_service import BillingService
 
 
 @lru_cache
@@ -22,4 +23,15 @@ def get_agent_service() -> AgentService:
     """Provide an AgentService wired to the Supabase client."""
     settings = get_settings_dependency()
     client = get_supabase_client()
-    return AgentService(client=client, settings=settings)
+    billing_service = BillingService(client)
+    return AgentService(
+        client=client,
+        settings=settings,
+        billing_service=billing_service,
+    )
+
+
+def get_billing_service() -> BillingService:
+    """Provide a BillingService wired to the Supabase client."""
+    client = get_supabase_client()
+    return BillingService(client)

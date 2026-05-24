@@ -21,6 +21,9 @@ class Settings:
     supabase_url: str
     supabase_key: str
 
+    # Secret token that machine-wallet webhooks must send to refill credits.
+    billing_webhook_secret: str
+
     # How long a new agent's free trial lasts.
     trial_period_days: int = 7
 
@@ -34,6 +37,7 @@ def get_settings() -> Settings:
     """
     supabase_url = os.getenv("SUPABASE_URL", "").strip()
     supabase_key = os.getenv("SUPABASE_KEY", "").strip()
+    billing_webhook_secret = os.getenv("BILLING_WEBHOOK_SECRET", "").strip()
 
     if not supabase_url or not supabase_key:
         raise ValueError(
@@ -41,7 +45,14 @@ def get_settings() -> Settings:
             "Set SUPABASE_URL and SUPABASE_KEY in your `.env` file."
         )
 
+    if not billing_webhook_secret:
+        raise ValueError(
+            "Missing billing webhook secret. "
+            "Set BILLING_WEBHOOK_SECRET in your `.env` file."
+        )
+
     return Settings(
         supabase_url=supabase_url,
         supabase_key=supabase_key,
+        billing_webhook_secret=billing_webhook_secret,
     )

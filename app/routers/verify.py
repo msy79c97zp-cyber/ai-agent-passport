@@ -23,6 +23,7 @@ def verify_agent(
     """
     Check whether an agent is verified, active, and still within trial.
 
-    Other agents can call this endpoint before trusting interactions.
+    Each call costs 1 prepaid credit. When `credit_balance` is zero, the API
+    returns HTTP 402 with instructions to refill via Stripe MPP.
     """
     return service.verify_agent(agent_id)

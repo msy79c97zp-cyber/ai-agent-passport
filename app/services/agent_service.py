@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 from fastapi import HTTPException, status
 from supabase import Client
 
+from app.billing_constants import DEFAULT_STARTING_CREDITS
 from app.config import Settings, get_settings
 from app.models import (
     ActivateSubscriptionResponse,
@@ -20,6 +21,7 @@ from app.models import (
     AgentStatus,
     AgentVerifyResponse,
 )
+from app.services.billing_service import BillingService
 
 # Supabase table name used throughout the app.
 AGENTS_TABLE = "agents"
@@ -28,9 +30,15 @@ AGENTS_TABLE = "agents"
 class AgentService:
     """Encapsulates all database operations for agents."""
 
-    def __init__(self, client: Client, settings: Optional[Settings] = None) -> None:
+    def __init__(
+        self,
+        client: Client,
+        settings: Optional[Settings] = None,
+        billing_service: Optional[BillingService] = None,
+    ) -> None:
         self.client = client
         self.settings = settings or get_settings()
+        self.billing = billing_service or BillingService(client)
 
     def register_agent(self, payload: AgentRegisterRequest) -> AgentRegisterResponse:
         """
@@ -40,6 +48,7 @@ class AgentService:
         - status: trial
         - is_verified: False (verification can be added later)
         - is_active: True
+        - credit_balance: 50 prepaid verification credits
         """
         agent_id = uuid4()
         created_at = datetime.now(timezone.utc)
@@ -52,6 +61,7 @@ class AgentService:
             "status": AgentStatus.TRIAL.value,
             "is_verified": False,
             "is_active": True,
+            "credit_balance": DEFAULT_STARTING_CREDITS,
             "created_at": created_at.isoformat(),
             "trial_ends_at": trial_ends_at.isoformat(),
         }
@@ -70,6 +80,7 @@ class AgentService:
             status=AgentStatus.TRIAL,
             is_verified=False,
             is_active=True,
+            credit_balance=DEFAULT_STARTING_CREDITS,
             created_at=created_at,
             trial_ends_at=trial_ends_at,
         )
@@ -78,12 +89,25 @@ class AgentService:
         """
         Look up an agent and return their public identity status.
 
+        Each verification costs 1 prepaid credit (M2M billing). Agents with
+        a zero balance receive HTTP 402 Payment Required instead of a result.
+
         `trial_expired` is True when the trial window has passed and the
         agent has not upgraded to a paid subscription yet.
         """
         agent = self._get_agent_or_404(agent_id)
-        now = datetime.now(timezone.utc)
+        credit_balance = int(agent.get("credit_balance", 0))
 
+        # Block lookups when prepaid credits are exhausted.
+        self.billing.ensure_can_verify(credit_balance)
+
+        # Charge one credit for this passport validation.
+        updated_balance = self.billing.deduct_verification_credit(
+            agent_id=agent_id,
+            current_balance=credit_balance,
+        )
+
+        now = datetime.now(timezone.utc)
         created_at = self._parse_timestamp(agent["created_at"])
         trial_ends_at = self._parse_timestamp(agent["trial_ends_at"])
         agent_status = AgentStatus(agent["status"])
@@ -99,6 +123,7 @@ class AgentService:
             is_active=agent["is_active"],
             status=agent_status,
             trial_expired=trial_expired,
+            credit_balance=updated_balance,
             created_at=created_at,
             trial_ends_at=trial_ends_at,
         )
@@ -118,6 +143,7 @@ class AgentService:
             return ActivateSubscriptionResponse(
                 agent_id=agent_id,
                 status=AgentStatus.PAID,
+                credit_balance=int(agent.get("credit_balance", 0)),
                 message="Subscription is already active.",
             )
 
@@ -143,9 +169,12 @@ class AgentService:
                 detail="Failed to activate subscription. Please try again.",
             )
 
+        updated_agent = response.data[0]
+
         return ActivateSubscriptionResponse(
             agent_id=agent_id,
             status=AgentStatus.PAID,
+            credit_balance=int(updated_agent.get("credit_balance", 0)),
             message="Subscription activated successfully.",
         )
 

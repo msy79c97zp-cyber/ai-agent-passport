@@ -49,6 +49,10 @@ class AgentRegisterResponse(BaseModel):
     status: AgentStatus
     is_verified: bool
     is_active: bool
+    credit_balance: int = Field(
+        default=50,
+        description="Prepaid verification credits remaining on the account.",
+    )
     created_at: datetime
     trial_ends_at: datetime
 
@@ -67,6 +71,10 @@ class AgentVerifyResponse(BaseModel):
     is_active: bool
     status: AgentStatus
     trial_expired: bool
+    credit_balance: int = Field(
+        default=50,
+        description="Prepaid verification credits remaining after this lookup.",
+    )
     created_at: datetime
     trial_ends_at: datetime
 
@@ -87,4 +95,33 @@ class ActivateSubscriptionResponse(BaseModel):
 
     agent_id: UUID
     status: AgentStatus
+    credit_balance: int = Field(
+        default=50,
+        description="Prepaid verification credits remaining on the account.",
+    )
+    message: str
+
+
+# ---------------------------------------------------------------------------
+# Billing / M2M machine-wallet refill
+# ---------------------------------------------------------------------------
+
+
+class RefillCreditsRequest(BaseModel):
+    """
+    Payload sent by the Stripe MPP machine-wallet checkout webhook.
+
+    When payment succeeds, the payment provider calls `/refill-credits`
+    with the agent ID so we can top up their prepaid balance.
+    """
+
+    agent_id: UUID = Field(..., description="The agent whose credits to refill.")
+
+
+class RefillCreditsResponse(BaseModel):
+    """Returned after credits are successfully added to an agent account."""
+
+    agent_id: UUID
+    credits_added: int
+    credit_balance: int
     message: str

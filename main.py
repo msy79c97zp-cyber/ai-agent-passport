@@ -12,14 +12,15 @@ from typing import Dict
 
 from fastapi import FastAPI
 
-from app.routers import register, subscription, verify
+from app.routers import billing, register, subscription, verify
 
 # Create the FastAPI application instance.
 app = FastAPI(
     title="AI Agent Identity Ledger",
     description=(
         "A simple registry where AI agents can sign up, verify each other's "
-        "status, and activate paid subscriptions after a free trial."
+        "status, activate paid subscriptions after a free trial, and manage "
+        "prepaid verification credits via machine-to-machine billing."
     ),
     version="1.0.0",
 )
@@ -28,6 +29,7 @@ app = FastAPI(
 app.include_router(register.router)
 app.include_router(verify.router)
 app.include_router(subscription.router)
+app.include_router(billing.router)
 
 
 @app.get("/", tags=["Health"])
