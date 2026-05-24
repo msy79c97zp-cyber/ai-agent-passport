@@ -1,0 +1,79 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/config.json",
+  "name": "AI Agent Passport MCP",
+  "version": "1.0.0",
+  "description": "Connect any LLM to the AI Agent Identity Ledger hosted on Render.",
+
+  "environment": {
+    "PASSPORT_API_URL": "https://ai-agent-passport.onrender.com",
+    "BILLING_WEBHOOK_SECRET": "your-billing-webhook-secret-from-render-env"
+  },
+
+  "claude_desktop": {
+    "_docs": "Merge the mcpServers block into ~/Library/Application Support/Claude/claude_desktop_config.json on macOS.",
+    "mcpServers": {
+      "ai-agent-passport": {
+        "command": "python3",
+        "args": [
+          "/ABSOLUTE/PATH/TO/ai-agent-passport/mcp_server.py"
+        ],
+        "env": {
+          "PASSPORT_API_URL": "https://ai-agent-passport.onrender.com",
+          "BILLING_WEBHOOK_SECRET": "your-billing-webhook-secret-from-render-env"
+        }
+      }
+    }
+  },
+
+  "langchain": {
+    "_docs": "Use MultiServerMCPClient (langchain-mcp-adapters) or langchain-mcp with stdio.",
+    "example_python": {
+      "install": "pip install langchain-mcp-adapters mcp httpx python-dotenv",
+      "code_snippet": "from langchain_mcp_adapters.client import MultiServerMCPClient\n\nclient = MultiServerMCPClient({\n    \"ai-agent-passport\": {\n        \"command\": \"python3\",\n        \"args\": [\"/ABSOLUTE/PATH/TO/ai-agent-passport/mcp_server.py\"],\n        \"transport\": \"stdio\",\n        \"env\": {\n            \"PASSPORT_API_URL\": \"https://ai-agent-passport.onrender.com\",\n            \"BILLING_WEBHOOK_SECRET\": \"your-billing-webhook-secret-from-render-env\"\n        }\n    }\n})\n\ntools = await client.get_tools()\n# tools: register_agent, verify_agent_passport, refill_agent_credits"
+    }
+  },
+
+  "cursor": {
+    "_docs": "Add to .cursor/mcp.json in your project or global Cursor MCP settings.",
+    "mcpServers": {
+      "ai-agent-passport": {
+        "command": "python3",
+        "args": [
+          "/ABSOLUTE/PATH/TO/ai-agent-passport/mcp_server.py"
+        ],
+        "env": {
+          "PASSPORT_API_URL": "https://ai-agent-passport.onrender.com",
+          "BILLING_WEBHOOK_SECRET": "your-billing-webhook-secret-from-render-env"
+        }
+      }
+    }
+  },
+
+  "tools": [
+    {
+      "name": "register_agent",
+      "description": "Register a new agent identity passport.",
+      "parameters": {
+        "agent_name": "string (required) — display name for the agent",
+        "description": "string (optional) — short purpose summary"
+      },
+      "maps_to": "POST {PASSPORT_API_URL}/register"
+    },
+    {
+      "name": "verify_agent_passport",
+      "description": "Check if an agent is active, paid/trial, expired; costs 1 credit.",
+      "parameters": {
+        "agent_id": "string (required) — UUID of the agent to verify"
+      },
+      "maps_to": "GET {PASSPORT_API_URL}/verify/{agent_id}"
+    },
+    {
+      "name": "refill_agent_credits",
+      "description": "Machine-wallet refill (+5000 credits) after Stripe MPP payment.",
+      "parameters": {
+        "agent_id": "string (required) — UUID of the agent to refill"
+      },
+      "maps_to": "POST {PASSPORT_API_URL}/refill-credits"
+    }
+  ]
+}
