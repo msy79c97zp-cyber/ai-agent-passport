@@ -58,17 +58,15 @@ class BillingService:
         """
         new_balance = current_balance - VERIFICATION_CREDIT_COST
 
-        response = (
-            self.client.table(AGENTS_TABLE)
-            .update({"credit_balance": new_balance})
-            .eq("id", str(agent_id))
-            .execute()
-        )
-
-        if not response.data:
+        try:
+            # Execute the database write operation
+            self.client.table(AGENTS_TABLE).update(
+                {"credit_balance": new_balance}
+            ).eq("id", str(agent_id)).execute()
+        except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to deduct verification credit. Please try again.",
+                detail=f"Database update failed: {str(e)}",
             )
 
         return new_balance
@@ -84,17 +82,14 @@ class BillingService:
         current_balance = int(agent.get("credit_balance", 0))
         new_balance = current_balance + REFILL_CREDITS_AMOUNT
 
-        response = (
-            self.client.table(AGENTS_TABLE)
-            .update({"credit_balance": new_balance})
-            .eq("id", str(agent_id))
-            .execute()
-        )
-
-        if not response.data:
+        try:
+            self.client.table(AGENTS_TABLE).update(
+                {"credit_balance": new_balance}
+            ).eq("id", str(agent_id)).execute()
+        except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to refill credits. Please try again.",
+                detail=f"Database refill failed: {str(e)}",
             )
 
         return RefillCreditsResponse(
