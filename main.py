@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI
 import redis
-from app.routers import billing, register, storefront, subscription, verify
+from app.routers import billing, register, storefront, subscription, verify, mcp_discovery
 
 # Create the FastAPI application instance.
 app = FastAPI(
@@ -21,6 +21,9 @@ def startup_event():
     # decode_responses=True automatically formats binary data back into clean strings
     app.state.redis = redis.Redis.from_url(redis_url, decode_responses=True)
     print("⚡ Redis Valet Caching Pool Initialized Successfully!")
+
+# Public MCP Discovery Directory Pathway
+app.include_router(mcp_discovery.router)
 
 # Storefront at GET / - must be registered before other routers if paths overlap.
 app.include_router(storefront.router)
